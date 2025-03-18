@@ -113,49 +113,70 @@ class GameState {
         }
 };
 
-pair<int, int> detectThreat(const GameState& state, char opponent) {
-    const int dx[] = {1, 0, 1, 1};  // Directions: horizontal, vertical, diagonal (/ and \)
+vector<pair<int, int>> detectThreats(GameState rootState, char opponentPlayer) {
+    const int dx[] = {1, 0, 1, 1};  // Direcciones: horizontal, vertical, diagonal (\ y /)
     const int dy[] = {0, 1, 1, -1};
 
+    vector<pair<int, int>> threatPositions; // Lista de amenazas detectadas
+
+    // Iterar sobre cada celda del tablero
     for (int x = 0; x < 19; ++x) {
         for (int y = 0; y < 19; ++y) {
-            if (state.board[x][y] != 'N') continue;  // Skip occupied positions
+            if (rootState.board[x][y] != opponentPlayer) continue; // Revisar solo las fichas del oponente
 
-            // Temporarily place the opponent's piece to test
-            GameState tempState = state;
-            tempState.board[x][y] = opponent;
-
-            // Check all directions for potential wins
+            // Revisar las 4 direcciones posibles
             for (int d = 0; d < 4; ++d) {
-                int count = 0;
-                int emptyCount = 0;
+                int count = 1;  // Incluir la ficha actual en el conteo
+                pair<int, int> leftOpen = {-1, -1};  // Espacio vacío al extremo izquierdo
+                pair<int, int> rightOpen = {-1, -1}; // Espacio vacío al extremo derecho
 
-                for (int step = -5; step <= 5; ++step) {
+                // Explorar hacia adelante (extremo derecho de la línea)
+                for (int step = 1; step <= 5; ++step) {
                     int nx = x + step * dx[d];
                     int ny = y + step * dy[d];
 
-                    if (nx < 0 || ny < 0 || nx >= 19 || ny >= 19) continue;  // Skip out-of-bounds
-                    if (tempState.board[nx][ny] == opponent) {
+                    if (nx < 0 || ny < 0 || nx >= 19 || ny >= 19) break; // Fuera del tablero
+                    if (rootState.board[nx][ny] == opponentPlayer) {
                         count++;
-                    } else if (tempState.board[nx][ny] == 'N') {
-                        emptyCount++;
+                    } else if (rootState.board[nx][ny] == '-') {
+                        if (rightOpen.first == -1) rightOpen = {nx, ny};
+                        break;  // Solo consideramos un espacio vacío por lado
                     } else {
-                        count = 0;  // Blocked by AI's piece or invalid
+                        break; // Línea bloqueada
                     }
+                }
 
-                    // Detect critical win/block conditions
-                    if (count == 4 && emptyCount >= 1) {  // Opponent has 4 in a row, one space to win
-                        return {x, y};  // Return the position to block
+                // Explorar hacia atrás (extremo izquierdo de la línea)
+                for (int step = -1; step >= -5; --step) {
+                    int nx = x + step * dx[d];
+                    int ny = y + step * dy[d];
+
+                    if (nx < 0 || ny < 0 || nx >= 19 || ny >= 19) break; // Fuera del tablero
+                    if (rootState.board[nx][ny] == opponentPlayer) {
+                        count++;
+                    } else if (rootState.board[nx][ny] == 'N') {
+                        if (leftOpen.first == -1) leftOpen = {nx, ny};
+                        break;  // Solo consideramos un espacio vacío por lado
+                    } else {
+                        break; // Línea bloqueada
                     }
-                    if (count == 5) {  // Opponent already has 5 in a row
-                        return {x, y};  // Return the position to block immediately
-                    }
+                }
+
+                // Verificar amenazas reales
+                if (count == 4) {
+                    // Si hay 4 fichas del oponente y al menos un extremo está abierto
+                    if (leftOpen.first != -1) threatPositions.push_back(leftOpen);
+                    if (rightOpen.first != -1) threatPositions.push_back(rightOpen);
+                } else if (count == 5) {
+                    // Si hay 5 fichas del oponente y al menos un extremo está abierto
+                    if (leftOpen.first != -1) threatPositions.push_back(leftOpen);
+                    if (rightOpen.first != -1) threatPositions.push_back(rightOpen);
                 }
             }
         }
     }
 
-    return {-1, -1};  // No threats detected
+    return threatPositions;
 }
 
 // Monte Carlo Node structure for MCTS
@@ -230,26 +251,35 @@ double simulatePlayout(GameState state) {
 
 // Main MCTS function
 pair<pair<int, int>, pair<int, int>> mcts(GameState& rootState, int timeLimit) {
-
-    char opponent = (rootState.currentPlayer == 'B') ? 'B' : 'W';
-
     auto root = make_shared<MCTSNode>(rootState);
     auto startTime = chrono::high_resolution_clock::now();
-
-    pair<int, int> blockMove = detectThreat(rootState, opponent);
-    if (blockMove.first != -1 && blockMove.second != -1) {
-        // Find another move to pair with the block
-        vector<pair<int, int>> availableMoves = rootState.getAvailableMoves();
-
-        for (const auto& move : availableMoves) {
-            if (move != blockMove) { // Select a move that isn't the same as the block move
-                return {blockMove, move};
-            }
-        }
-
-        // Fallback: If only one move is available
-        return {blockMove, {-1, -1}};
+    char opponent = (rootState.currentPlayer == 'B') ? 'W' : 'B'; // Determine the opponent's color
+    vector<pair<int, int>> threatPositions = detectThreats(rootState, opponent);
+    if (threatPositions.size() > 0){
+        cout << threatPositions[0].first << " " << threatPositions[0].second << endl;
     }
+
+    // Handle threats if detected
+    if (!threatPositions.empty()) {
+        if (threatPositions.size() >= 2) {
+            // If two or more threats are found, use the first two
+            return {threatPositions[0], threatPositions[1]};
+        } else if (threatPositions.size() == 1) {
+            // If only one threat is found, pair it with another valid move
+            vector<pair<int, int>> availableMoves = rootState.getAvailableMoves();
+            for (const auto move : availableMoves) {
+                cout << availableMoves.size() << endl;
+                if (move.first != threatPositions[0].first && move.second != threatPositions[0].second) { // Ensure the second move is not the same
+                    cout << move.first << " " << move.second << endl;
+                    return {threatPositions[0], move};
+                }
+            }
+            // Fallback: If no other move is available, return the single move (edge case)
+            return {threatPositions[0], {-1, -1}};
+        }
+    }
+
+    // No threats detected; proceed with regular MCTS
 
     while (true) {
         auto currentTime = chrono::high_resolution_clock::now();
@@ -288,6 +318,7 @@ pair<pair<int, int>, pair<int, int>> mcts(GameState& rootState, int timeLimit) {
     return {{availableMoves[0].first, availableMoves[0].second},
             {availableMoves[1].first, availableMoves[1].second}};
 }
+
 
 void playGame(GameState& state, char userColor, char aiColor, int timeLimit) {
     bool isUserTurn = (userColor == 'B'); // User goes first if they are black
