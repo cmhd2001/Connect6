@@ -255,9 +255,14 @@ pair<pair<int, int>, pair<int, int>> mcts(GameState& rootState, int timeLimit) {
     auto startTime = chrono::high_resolution_clock::now();
     char opponent = (rootState.currentPlayer == 'B') ? 'W' : 'B'; // Determine the opponent's color
     vector<pair<int, int>> threatPositions = detectThreats(rootState, opponent);
-    if (threatPositions.size() > 0){
-        cout << threatPositions[0].first << " " << threatPositions[0].second << endl;
+    cout << "[";
+    for (size_t i = 0; i < threatPositions.size(); ++i) {
+        cout << "(" << threatPositions[i].first << ", " << threatPositions[i].second << ")";
+        if (i < threatPositions.size() - 1) {
+            cout << ", ";
+        }
     }
+    cout << "]" << std::endl;
 
     // Handle threats if detected
     if (!threatPositions.empty()) {
@@ -268,9 +273,7 @@ pair<pair<int, int>, pair<int, int>> mcts(GameState& rootState, int timeLimit) {
             // If only one threat is found, pair it with another valid move
             vector<pair<int, int>> availableMoves = rootState.getAvailableMoves();
             for (const auto move : availableMoves) {
-                cout << availableMoves.size() << endl;
                 if (move.first != threatPositions[0].first && move.second != threatPositions[0].second) { // Ensure the second move is not the same
-                    cout << move.first << " " << move.second << endl;
                     return {threatPositions[0], move};
                 }
             }
