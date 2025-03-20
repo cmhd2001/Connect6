@@ -251,14 +251,14 @@ pair<pair<int, int>, pair<int, int>> mcts(GameState& rootState, int timeLimit) {
     auto startTime = chrono::high_resolution_clock::now();
     char opponent = (rootState.currentPlayer == 'B') ? 'W' : 'B'; // Determine the opponent's color
     vector<pair<int, int>> threatPositions = detectThreats(rootState, opponent);
-    cout << "[";
-    for (size_t i = 0; i < threatPositions.size(); ++i) {
-        cout << "(" << threatPositions[i].first << ", " << threatPositions[i].second << ")";
-        if (i < threatPositions.size() - 1) {
-            cout << ", ";
-        }
-    }
-    cout << "]" << endl;
+    // cout << "[";
+    // for (size_t i = 0; i < threatPositions.size(); ++i) {
+    //     cout << "(" << threatPositions[i].first << ", " << threatPositions[i].second << ")";
+    //     if (i < threatPositions.size() - 1) {
+    //         cout << ", ";
+    //     }
+    // }
+    // cout << "]" << endl;
 
     // Handle threats if detected
     if (!threatPositions.empty()) {
