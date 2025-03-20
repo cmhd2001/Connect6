@@ -6,6 +6,7 @@
 #include <ctime>
 #include <memory>
 #include <chrono>
+#include <set>
 
 using namespace std;
 char turn = 'B';
@@ -117,7 +118,7 @@ vector<pair<int, int>> detectThreats(GameState rootState, char opponentPlayer) {
     const int dx[] = {1, 0, 1, 1};  // Direcciones: horizontal, vertical, diagonal (\ y /)
     const int dy[] = {0, 1, 1, -1};
 
-    vector<pair<int, int>> threatPositions; // Lista de amenazas detectadas
+    set<pair<int, int>> threatSet;
 
     // Iterar sobre cada celda del tablero
     for (int x = 0; x < 19; ++x) {
@@ -154,7 +155,7 @@ vector<pair<int, int>> detectThreats(GameState rootState, char opponentPlayer) {
                     if (nx < 0 || ny < 0 || nx >= 19 || ny >= 19) break; // Fuera del tablero
                     if (rootState.board[nx][ny] == opponentPlayer) {
                         count++;
-                    } else if (rootState.board[nx][ny] == 'N') {
+                    } else if (rootState.board[nx][ny] == '-') {
                         if (leftOpen.first == -1) leftOpen = {nx, ny};
                         break;  // Solo consideramos un espacio vacío por lado
                     } else {
@@ -163,19 +164,14 @@ vector<pair<int, int>> detectThreats(GameState rootState, char opponentPlayer) {
                 }
 
                 // Verificar amenazas reales
-                if (count == 4) {
-                    // Si hay 4 fichas del oponente y al menos un extremo está abierto
-                    if (leftOpen.first != -1) threatPositions.push_back(leftOpen);
-                    if (rightOpen.first != -1) threatPositions.push_back(rightOpen);
-                } else if (count == 5) {
-                    // Si hay 5 fichas del oponente y al menos un extremo está abierto
-                    if (leftOpen.first != -1) threatPositions.push_back(leftOpen);
-                    if (rightOpen.first != -1) threatPositions.push_back(rightOpen);
+                if (count == 4 || count == 5) {
+                    if (leftOpen.first != -1) threatSet.insert(leftOpen);
+                    if (rightOpen.first != -1) threatSet.insert(rightOpen);
                 }
             }
         }
     }
-
+    vector<pair<int, int>> threatPositions(threatSet.begin(), threatSet.end());
     return threatPositions;
 }
 
@@ -262,7 +258,7 @@ pair<pair<int, int>, pair<int, int>> mcts(GameState& rootState, int timeLimit) {
             cout << ", ";
         }
     }
-    cout << "]" << std::endl;
+    cout << "]" << endl;
 
     // Handle threats if detected
     if (!threatPositions.empty()) {
