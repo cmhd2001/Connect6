@@ -32,7 +32,7 @@ public:
         board[move.x1][move.y1] = player;
         board[move.x2][move.y2] = player;
     }
-
+/*
     // Genera todos los movimientos válidos
     vector<Move> getValidMoves() const {
         vector<Move> moves;
@@ -76,6 +76,42 @@ public:
             }
         }
 
+        return moves;
+    }
+*/
+
+    vector<Move> getValidMoves() const {
+        vector<Move> moves;
+        int centerX = BOARD_SIZE / 2;
+        int centerY = BOARD_SIZE / 2;
+    
+        for (int x1 = 0; x1 < BOARD_SIZE; ++x1) {
+            for (int y1 = 0; y1 < BOARD_SIZE; ++y1) {
+                if (board[x1][y1] == '.') {
+                    // Calcular distancia al centro
+                    int dist1 = abs(centerX - x1) + abs(centerY - y1);
+                
+                    for (int x2 = 0; x2 < BOARD_SIZE; ++x2) {
+                        for (int y2 = 0; y2 < BOARD_SIZE; ++y2) {
+                            if (board[x2][y2] == '.' && !(x1 == x2 && y1 == y2)) {
+                                int dist2 = abs(centerX - x2) + abs(centerY - y2);
+                            
+                                // Empujar el movimiento con prioridad al centro
+                                moves.push_back({x1, y1, x2, y2});
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    
+        // Ordenar movimientos por distancia al centro (prioridad estratégica)
+        sort(moves.begin(), moves.end(), [centerX, centerY](const Move &a, const Move &b) {
+            int distA = abs(centerX - a.x1) + abs(centerY - a.y1) + abs(centerX - a.x2) + abs(centerY - a.y2);
+            int distB = abs(centerX - b.x1) + abs(centerY - b.y1) + abs(centerX - b.x2) + abs(centerY - b.y2);
+            return distA < distB;
+        });
+    
         return moves;
     }
 
